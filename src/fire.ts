@@ -132,7 +132,15 @@ export class CronFirer {
     await run
   }
 
-  /** Give a freshly created dedicated session its configured display title. */
+  /** Whether the dedicated session's header cwd no longer matches the configured cwd. */
+  private cwdMismatched(agent: Agent): boolean {
+    if (this.dedicatedSessionCwd === undefined) return false
+    return agent.session.header.cwd !== this.dedicatedSessionCwd
+  }
+
+  /**
+   * Give a freshly created dedicated session its configured display title.
+   */
   private applyDedicatedTitle(agent: Agent): void {
     const title = this.dedicatedSessionName
     if (title === undefined || title.trim() === '') return
@@ -159,18 +167,31 @@ export class CronFirer {
     if (id !== undefined && !this.isArchived(id)) {
       const live = this.ctx.agents.get(SessionId(id))
       if (live !== undefined) {
-        this.dedicated = live
-        await this.ensureAccounted(live)
-        return live
-      }
-      try {
-        const handle = await this.ctx.agents.resume({ resumeSessionId: SessionId(id), setup: (agentCtx) => this.installSelection(agentCtx) })
-        this.handles.push(handle)
-        this.dedicated = handle.agent
-        await this.ensureAccounted(handle.agent)
-        return handle.agent
-      } catch (error) {
-        this.logger.warn(`cronjob: resume of dedicated session "${id}" failed, creating a fresh one: ${renderThrown(error)}`)
+        if (this.cwdMismatched(live)) {
+          this.logger.warn(
+            `cronjob: dedicated session "${id}" lives in "${live.session.header.cwd}" but dedicatedSessionCwd is "${this.dedicatedSessionCwd}"; rotating to a fresh session`,
+          )
+        } else {
+          this.dedicated = live
+          await this.ensureAccounted(live)
+          return live
+        }
+      } else {
+        try {
+          const handle = await this.ctx.agents.resume({ resumeSessionId: SessionId(id), setup: (agentCtx) => this.installSelection(agentCtx) })
+          if (this.cwdMismatched(handle.agent)) {
+            this.logger.warn(
+              `cronjob: dedicated session "${id}" lives in "${handle.agent.session.header.cwd}" but dedicatedSessionCwd is "${this.dedicatedSessionCwd}"; rotating to a fresh session`,
+            )
+          } else {
+            this.handles.push(handle)
+            this.dedicated = handle.agent
+            await this.ensureAccounted(handle.agent)
+            return handle.agent
+          }
+        } catch (error) {
+          this.logger.warn(`cronjob: resume of dedicated session "${id}" failed, creating a fresh one: ${renderThrown(error)}`)
+        }
       }
     } else if (id !== undefined) {
       this.logger.warn(`cronjob: dedicated session "${id}" is archived (hidden from the UI); rotating to a fresh session`)

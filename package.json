@@ -1,6 +1,6 @@
 {
     "name":  "cronjob-dsh-plugin",
-    "version":  "0.1.1",
+    "version":  "0.1.2",
     "description":  "Machine-level cron jobs for DeepSeek Harness: configure scheduled tasks in the Web settings page; the host fires internally-driven agent requests into a dedicated session, hands-off.",
     "type":  "module",
     "main":  "lib/index.js",
@@ -17,7 +17,7 @@
                      "dsh-plugin",
                      "cron",
                      "scheduler",
-                     "瀹氭椂浠诲姟"
+                     "鐎规碍妞傛禒璇插"
                  ],
     "scripts":  {
                     "typecheck":  "tsc -p tsconfig.json --noEmit \u0026\u0026 tsc -p tsconfig.client.json --noEmit",

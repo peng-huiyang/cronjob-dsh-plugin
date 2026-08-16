@@ -22,6 +22,7 @@ function makeAgent(id: string): Agent {
   return {
     id: SessionId(id),
     status: 'idle',
+    session: { header: { cwd: undefined } },
     whenIdle: vi.fn(async () => undefined),
     runMaintenance: vi.fn(async (task: (signal: AbortSignal) => Promise<unknown>) => task(new AbortController().signal)),
     followup: vi.fn(),
@@ -240,5 +241,38 @@ describe('CronFirer', () => {
     await firer.fire(job({}), new Date())
 
     expect(rename).toHaveBeenCalledWith(created.agent.session, '定时任务')
+  })
+
+  it('rotates when the dedicated session cwd no longer matches the configured cwd', async () => {
+    const ctx = makeCtx()
+    const live = makeAgent('session-old-cwd')
+    ;(live.session as { header: { cwd: string | undefined } }).header.cwd = 'D:\\old\\cwd'
+    ctx.agents.get.mockReturnValue(live)
+    const created = makeHandle('session-new-cwd')
+    ctx.agents.create.mockResolvedValue(created)
+    const warn = vi.fn()
+    const firer = new CronFirer(ctx as never, () => 'session-old-cwd', vi.fn(async () => undefined), { warn }, 'D:\\new\\cwd')
+
+    await firer.fire(job({}), new Date())
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('rotating to a fresh session'))
+    expect(live.followup).not.toHaveBeenCalled()
+    expect(ctx.agents.create).toHaveBeenCalledTimes(1)
+    expect(ctx.agents.create).toHaveBeenCalledWith(
+      expect.objectContaining({ meta: expect.objectContaining({ cwd: 'D:\\new\\cwd' }) }),
+    )
+  })
+
+  it('keeps using the live session when its cwd matches the configured cwd', async () => {
+    const ctx = makeCtx()
+    const live = makeAgent('session-same-cwd')
+    ;(live.session as { header: { cwd: string | undefined } }).header.cwd = 'D:\\work\\cron'
+    ctx.agents.get.mockReturnValue(live)
+    const firer = new CronFirer(ctx as never, () => 'session-same-cwd', vi.fn(async () => undefined), { warn: vi.fn() }, 'D:\\work\\cron')
+
+    await firer.fire(job({}), new Date())
+
+    expect(ctx.agents.create).not.toHaveBeenCalled()
+    expect(live.followup).toHaveBeenCalledTimes(1)
   })
 })
