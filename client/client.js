@@ -888,27 +888,27 @@ window.__ModuleLoader__.load({ id: "cronjob-dsh-plugin", factory: (require) => {
 			document.head.appendChild(tag);
 		}
 		var CronPage_module_css_default = {
-			"primary": "_5qaa_G_primary",
-			"preview": "_5qaa_G_preview",
-			"list": "_5qaa_G_list",
-			"page": "_5qaa_G_page",
-			"toolbar": "_5qaa_G_toolbar",
-			"actions": "_5qaa_G_actions",
-			"jobName": "_5qaa_G_jobName",
+			"subtitle": "_5qaa_G_subtitle",
+			"cardHeader": "_5qaa_G_cardHeader",
 			"switch": "_5qaa_G_switch",
-			"empty": "_5qaa_G_empty",
 			"formTitle": "_5qaa_G_formTitle",
+			"primary": "_5qaa_G_primary",
+			"jobName": "_5qaa_G_jobName",
+			"checkbox": "_5qaa_G_checkbox",
+			"preview": "_5qaa_G_preview",
+			"actions": "_5qaa_G_actions",
+			"notice": "_5qaa_G_notice",
+			"card": "_5qaa_G_card",
+			"empty": "_5qaa_G_empty",
+			"meta": "_5qaa_G_meta",
 			"field": "_5qaa_G_field",
 			"error": "_5qaa_G_error",
-			"notice": "_5qaa_G_notice",
-			"formActions": "_5qaa_G_formActions",
-			"checkbox": "_5qaa_G_checkbox",
-			"cardHeader": "_5qaa_G_cardHeader",
-			"subtitle": "_5qaa_G_subtitle",
+			"page": "_5qaa_G_page",
+			"list": "_5qaa_G_list",
 			"danger": "_5qaa_G_danger",
-			"card": "_5qaa_G_card",
-			"meta": "_5qaa_G_meta",
-			"form": "_5qaa_G_form"
+			"toolbar": "_5qaa_G_toolbar",
+			"form": "_5qaa_G_form",
+			"formActions": "_5qaa_G_formActions"
 		};
 		//#endregion
 		//#region src/client/JobForm.tsx

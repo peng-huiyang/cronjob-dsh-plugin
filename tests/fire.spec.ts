@@ -25,6 +25,7 @@ function makeAgent(id: string): Agent {
     whenIdle: vi.fn(async () => undefined),
     runMaintenance: vi.fn(async (task: (signal: AbortSignal) => Promise<unknown>) => task(new AbortController().signal)),
     followup: vi.fn(),
+    ctx: { on: vi.fn(() => () => undefined) },
   } as unknown as Agent
 }
 
@@ -87,6 +88,23 @@ describe('CronFirer', () => {
     )
   })
 
+  it('installs a model selection on the created dedicated session', async () => {
+    const ctx = makeCtx()
+    const created = makeHandle('session-model')
+    ctx.agents.create.mockResolvedValue(created)
+    ctx.get.mockReturnValue({ currentSelection: () => ({ provider: 'deepseek', model: 'deepseek-chat' }) })
+    const firer = new CronFirer(ctx as never, () => undefined, vi.fn(async () => undefined), { warn: vi.fn() })
+
+    await firer.fire(job({}), new Date())
+
+    const createArgs = ctx.agents.create.mock.calls[0][0]
+    expect(typeof createArgs.setup).toBe('function')
+    // Running the pre-publication setup must install the scoped listeners
+    // (system-prompt/assemble + agent/request) that fill {{model}}.
+    createArgs.setup({ agent: created.agent })
+    expect(created.agent.ctx.on).toHaveBeenCalledTimes(2)
+  })
+
   it('reuses a live dedicated session', async () => {
     const ctx = makeCtx()
     const live = makeAgent('session-live')
@@ -109,7 +127,9 @@ describe('CronFirer', () => {
 
     await firer.fire(job({}), new Date())
 
-    expect(ctx.agents.resume).toHaveBeenCalledWith({ resumeSessionId: SessionId('session-cold') })
+    expect(ctx.agents.resume).toHaveBeenCalledWith(
+      expect.objectContaining({ resumeSessionId: SessionId('session-cold') }),
+    )
     expect(ctx.agents.create).not.toHaveBeenCalled()
     expect(resumed.agent.followup).toHaveBeenCalledTimes(1)
   })

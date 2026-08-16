@@ -9,7 +9,7 @@
 import { randomUUID } from 'node:crypto'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
+import { installModelSelection, type Agent, type AgentHandle, type ModelSelection, type ModelSelectionRef } from '@deepseek-ai/dsh-agent'
 import type { Context } from '@deepseek-ai/cordis'
 import type { CronJob } from './types.ts'
 import { renderThrown } from './util.ts'
@@ -26,6 +26,34 @@ export function renderCronFraming(job: CronJob, occurrenceAt: Date): string {
     `occurrence_at: ${occurrenceAt.toISOString()}`,
     `task: ${job.prompt}`,
   ].join('\n')
+}
+
+/**
+ * Build a model selection ref for the dedicated session: the session's own
+ * logged request header when one exists, otherwise the deployment default.
+ * Mirrors the ApiProxy's selectionFor so prompt assembly can resolve
+ * `{{model}}`/`{{provider}}` variables and route requests.
+ */
+function makeModelSelection(agent: Agent, getDefault: () => ModelSelection | undefined): ModelSelectionRef {
+  const ref: ModelSelectionRef = {
+    get current(): ModelSelection | undefined {
+      const logged = agent.session.requestHeader()?.config
+      if (logged !== undefined) {
+        return {
+          provider: logged.provider,
+          model: logged.model,
+          ...(logged.reasoningEffort === undefined ? {} : { reasoningEffort: logged.reasoningEffort }),
+        }
+      }
+      return getDefault()
+    },
+    // The cron session keeps log/default resolution; when the user opens the
+    // session in the Web UI, the UI's own per-session selection handles
+    // overrides on top of the listeners installed here.
+    set current(_next: ModelSelection | undefined) {},
+    assembled: undefined,
+  }
+  return ref
 }
 
 /** Queues one job's task into the dedicated session, waking the agent. */
@@ -53,6 +81,19 @@ export class CronFirer {
     return (registry.archivedSessionIds as readonly string[]).includes(id)
   }
 
+  /** The deployment default model selection, when the service is mounted. */
+  private defaultSelection(): ModelSelection | undefined {
+    const service = this.ctx.get('agentDefaultModel') as { currentSelection(): ModelSelection } | undefined
+    return service?.currentSelection()
+  }
+
+  /** Pre-publication setup installing the model selection on a fresh/resumed agent. */
+  private installSelection(agentCtx: { agent?: Agent }): void {
+    const agent = agentCtx.agent
+    if (agent === undefined) return // cannot happen through the factory; keep setup total
+    installModelSelection(agent.ctx, makeModelSelection(agent, () => this.defaultSelection()))
+  }
+
   /**
    * Resolve the dedicated firing session: the live agent, a resumed persisted
    * session, or a freshly created one. An archived dedicated session is
@@ -71,7 +112,7 @@ export class CronFirer {
         return live
       }
       try {
-        const handle = await this.ctx.agents.resume({ resumeSessionId: SessionId(id) })
+        const handle = await this.ctx.agents.resume({ resumeSessionId: SessionId(id), setup: (agentCtx) => this.installSelection(agentCtx) })
         this.handles.push(handle)
         this.dedicated = handle.agent
         return handle.agent
@@ -82,7 +123,11 @@ export class CronFirer {
       this.logger.warn(`cronjob: dedicated session "${id}" is archived (hidden from the UI); rotating to a fresh session`)
     }
     const sessionId = SessionId(`session-${randomUUID()}`)
-    const handle = await this.ctx.agents.create({ sessionId, meta: { cwd: this.dedicatedSessionCwd ?? process.cwd() } })
+    const handle = await this.ctx.agents.create({
+      sessionId,
+      meta: { cwd: this.dedicatedSessionCwd ?? process.cwd() },
+      setup: (agentCtx) => this.installSelection(agentCtx),
+    })
     this.handles.push(handle)
     this.dedicated = handle.agent
     try {
