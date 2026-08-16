@@ -49,6 +49,7 @@ export function apply(ctx: Context, config?: Config): void {
     (id) => store.setDedicatedSessionId(id),
     ctx.logger,
     dedicatedSessionCwd,
+    config?.dedicatedSessionName,
   )
   /** The composed fire path: queue the task, then record the outcome. */
   const fireJob = async (job: CronJob): Promise<void> => {
@@ -76,7 +77,6 @@ export function apply(ctx: Context, config?: Config): void {
     scheduler.start()
     mountCronRoutes(ctx, { store, scheduler, firer, fireJob })
     const disposeTools = registerCronTools(ctx, { store, fireJob })
-    void config
     return () => {
       scheduler.dispose()
       disposeTools()

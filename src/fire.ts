@@ -56,10 +56,24 @@ function makeModelSelection(agent: Agent, getDefault: () => ModelSelection | und
   return ref
 }
 
+/** The workspace-registry surface this plugin touches (structural). */
+interface WorkspaceLike {
+  readonly sessionIds: readonly unknown[]
+  attachSession(sessionId: SessionId): Promise<void>
+}
+
+interface WorkspaceRegistryLike {
+  list(): WorkspaceLike[]
+  resolveByPath(path: string): Promise<WorkspaceLike | undefined>
+  create(path: string): Promise<WorkspaceLike>
+}
+
 /** Queues one job's task into the dedicated session, waking the agent. */
 export class CronFirer {
   private handles: AgentHandle[] = []
   private dedicated: Agent | null = null
+  /** Serializes workspace resolve/create/attach cycles, like the ApiProxy. */
+  private workspaceChain: Promise<unknown> = Promise.resolve()
 
   constructor(
     private readonly ctx: Context,
@@ -68,6 +82,8 @@ export class CronFirer {
     private readonly logger: FirerLogger,
     /** Working directory for a freshly created dedicated session. */
     private readonly dedicatedSessionCwd?: string,
+    /** Initial display title for a freshly created dedicated session. */
+    private readonly dedicatedSessionName?: string,
   ) {}
 
   /**
@@ -95,6 +111,37 @@ export class CronFirer {
   }
 
   /**
+   * Account the dedicated session into the workspace row of its cwd, so the
+   * Web UI groups it under a named workspace instead of "Ungrouped" and its
+   * row gets the ordinary rename affordances. Sessions created through the
+   * ApiProxy are accounted this way; plugin-created sessions must do it
+   * themselves. No-op when the workspace registry is absent or the session is
+   * already accounted.
+   */
+  private async ensureAccounted(agent: Agent): Promise<void> {
+    const registry = this.ctx.get('workspaceRegistry') as WorkspaceRegistryLike | undefined
+    if (registry === undefined || typeof registry.list !== 'function') return
+    const run = this.workspaceChain.then(async () => {
+      if (registry.list().some((workspace) => (workspace.sessionIds as readonly string[]).includes(String(agent.id)))) return
+      const cwd = this.dedicatedSessionCwd ?? process.cwd()
+      const existing = await registry.resolveByPath(cwd)
+      const workspace = existing ?? (await registry.create(cwd))
+      await workspace.attachSession(agent.id)
+    })
+    this.workspaceChain = run.then(() => undefined, () => undefined)
+    await run
+  }
+
+  /** Give a freshly created dedicated session its configured display title. */
+  private applyDedicatedTitle(agent: Agent): void {
+    const title = this.dedicatedSessionName
+    if (title === undefined || title.trim() === '') return
+    const service = this.ctx.get('sessionTitle') as { rename(session: unknown, title: string): unknown } | undefined
+    if (service === undefined) return
+    service.rename(agent.session, title.trim())
+  }
+
+  /**
    * Resolve the dedicated firing session: the live agent, a resumed persisted
    * session, or a freshly created one. An archived dedicated session is
    * abandoned in favor of a fresh one.
@@ -113,12 +160,14 @@ export class CronFirer {
       const live = this.ctx.agents.get(SessionId(id))
       if (live !== undefined) {
         this.dedicated = live
+        await this.ensureAccounted(live)
         return live
       }
       try {
         const handle = await this.ctx.agents.resume({ resumeSessionId: SessionId(id), setup: (agentCtx) => this.installSelection(agentCtx) })
         this.handles.push(handle)
         this.dedicated = handle.agent
+        await this.ensureAccounted(handle.agent)
         return handle.agent
       } catch (error) {
         this.logger.warn(`cronjob: resume of dedicated session "${id}" failed, creating a fresh one: ${renderThrown(error)}`)
@@ -134,6 +183,8 @@ export class CronFirer {
     })
     this.handles.push(handle)
     this.dedicated = handle.agent
+    await this.ensureAccounted(handle.agent)
+    this.applyDedicatedTitle(handle.agent)
     try {
       await this.setDedicatedSessionId(sessionId)
     } catch (error) {

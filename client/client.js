@@ -889,26 +889,26 @@ window.__ModuleLoader__.load({ id: "cronjob-dsh-plugin", factory: (require) => {
 		}
 		var CronPage_module_css_default = {
 			"subtitle": "_5qaa_G_subtitle",
-			"list": "_5qaa_G_list",
-			"meta": "_5qaa_G_meta",
+			"toolbar": "_5qaa_G_toolbar",
 			"danger": "_5qaa_G_danger",
-			"form": "_5qaa_G_form",
 			"formActions": "_5qaa_G_formActions",
-			"cardHeader": "_5qaa_G_cardHeader",
+			"form": "_5qaa_G_form",
+			"list": "_5qaa_G_list",
+			"formTitle": "_5qaa_G_formTitle",
+			"error": "_5qaa_G_error",
 			"primary": "_5qaa_G_primary",
-			"actions": "_5qaa_G_actions",
 			"preview": "_5qaa_G_preview",
-			"checkbox": "_5qaa_G_checkbox",
+			"actions": "_5qaa_G_actions",
+			"switch": "_5qaa_G_switch",
+			"cardHeader": "_5qaa_G_cardHeader",
 			"field": "_5qaa_G_field",
 			"card": "_5qaa_G_card",
+			"page": "_5qaa_G_page",
+			"meta": "_5qaa_G_meta",
 			"notice": "_5qaa_G_notice",
-			"jobName": "_5qaa_G_jobName",
 			"empty": "_5qaa_G_empty",
-			"error": "_5qaa_G_error",
-			"formTitle": "_5qaa_G_formTitle",
-			"toolbar": "_5qaa_G_toolbar",
-			"switch": "_5qaa_G_switch",
-			"page": "_5qaa_G_page"
+			"jobName": "_5qaa_G_jobName",
+			"checkbox": "_5qaa_G_checkbox"
 		};
 		//#endregion
 		//#region src/client/JobForm.tsx

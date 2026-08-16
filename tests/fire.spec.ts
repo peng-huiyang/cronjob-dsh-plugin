@@ -190,4 +190,55 @@ describe('CronFirer', () => {
     expect(created.agent.followup).toHaveBeenCalledTimes(1)
     expect(live.followup).toHaveBeenCalledTimes(1) // unchanged — no new message into the archived session
   })
+
+  it('accounts the created session into its cwd workspace (no more Ungrouped)', async () => {
+    const ctx = makeCtx()
+    const created = makeHandle('session-accounted')
+    ctx.agents.create.mockResolvedValue(created)
+    const attach = vi.fn(async () => undefined)
+    const registry = {
+      list: vi.fn(() => []),
+      resolveByPath: vi.fn(async () => undefined),
+      create: vi.fn(async () => ({ sessionIds: [], attachSession: attach })),
+    }
+    ctx.get.mockReturnValue(registry)
+    const firer = new CronFirer(ctx as never, () => undefined, vi.fn(async () => undefined), { warn: vi.fn() }, 'D:\\work\\cron')
+
+    await firer.fire(job({}), new Date())
+
+    expect(registry.resolveByPath).toHaveBeenCalledWith('D:\\work\\cron')
+    expect(registry.create).toHaveBeenCalledWith('D:\\work\\cron')
+    expect(attach).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not re-attach a session already accounted in a workspace', async () => {
+    const ctx = makeCtx()
+    const live = makeAgent('session-live')
+    ctx.agents.get.mockReturnValue(live)
+    const registry = {
+      list: vi.fn(() => [{ sessionIds: ['session-live'] }]),
+      resolveByPath: vi.fn(),
+      create: vi.fn(),
+    }
+    ctx.get.mockReturnValue(registry)
+    const firer = new CronFirer(ctx as never, () => 'session-live', vi.fn(async () => undefined), { warn: vi.fn() })
+
+    await firer.fire(job({}), new Date())
+
+    expect(registry.resolveByPath).not.toHaveBeenCalled()
+    expect(registry.create).not.toHaveBeenCalled()
+  })
+
+  it('applies the configured dedicated session title on create', async () => {
+    const ctx = makeCtx()
+    const created = makeHandle('session-titled')
+    ctx.agents.create.mockResolvedValue(created)
+    const rename = vi.fn()
+    ctx.get.mockImplementation((name: string) => (name === 'sessionTitle' ? { rename } : undefined))
+    const firer = new CronFirer(ctx as never, () => undefined, vi.fn(async () => undefined), { warn: vi.fn() }, undefined, '定时任务')
+
+    await firer.fire(job({}), new Date())
+
+    expect(rename).toHaveBeenCalledWith(created.agent.session, '定时任务')
+  })
 })

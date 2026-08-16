@@ -51,14 +51,17 @@ dsh plugin --profile web add cronjob-dsh-plugin
 
 The dedicated firing session is created with the dsh process cwd as its
 working directory, which groups it under that directory's workspace in the
-UI. To pin it to a specific workspace instead, configure the plugin in your
-profile patch (`~/.dsh/profiles/web/cordis.patch.yml`):
+UI (the plugin accounts it into the workspace row, so it never lands in
+"Ungrouped" and its row supports ordinary rename). To pin it to a specific
+workspace instead, configure the plugin in your profile patch
+(`~/.dsh/profiles/web/cordis.patch.yml`):
 
 ```yaml
 - id: cronjob
   name: cronjob-dsh-plugin
   config:
-    dedicatedSessionCwd: 'D:\DeskTop\harness-test'
+    dedicatedSessionCwd: 'D:\DeskTop\harness-test'   # absolute path
+    dedicatedSessionName: 'Cron Jobs'               # optional initial title
 ```
 
 An existing dedicated session keeps its original cwd; delete it from the UI

@@ -32,9 +32,12 @@ dsh web
 > ```yaml
 > - id: cronjob
 >   config:
->     dedicatedSessionCwd: 'D:\你的\工作区'
+>     dedicatedSessionCwd: 'D:\你的\工作区'      # 专用会话的工作目录（必填绝对路径）
+>     dedicatedSessionName: '定时任务'           # 可选：新建专用会话时的初始名称
 > ```
-> 已存在的专用会话保持原目录；删除它后，下一次触发会在配置的目录新建一个。
+> 专用会话会自动归入 `dedicatedSessionCwd` 对应的**工作区**（而不是「未分组」），
+> 会话行与普通会话一样支持重命名。已存在的专用会话保持原目录；删除它后，
+> 下一次触发会在配置的目录新建一个。
 
 ## 工作原理
 
