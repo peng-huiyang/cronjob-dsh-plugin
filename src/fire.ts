@@ -43,8 +43,20 @@ export class CronFirer {
   ) {}
 
   /**
+   * Whether the workspace registry reports the session as archived (hidden
+   * from every UI grouping surface). Archived sessions are unarchivable in
+   * the current harness, so the plugin rotates away from them.
+   */
+  private isArchived(id: string): boolean {
+    const registry = this.ctx.get('workspaceRegistry') as { archivedSessionIds?: readonly unknown[] } | undefined
+    if (registry?.archivedSessionIds === undefined) return false
+    return (registry.archivedSessionIds as readonly string[]).includes(id)
+  }
+
+  /**
    * Resolve the dedicated firing session: the live agent, a resumed persisted
-   * session, or a freshly created one.
+   * session, or a freshly created one. An archived dedicated session is
+   * abandoned in favor of a fresh one.
    */
   async ensureDedicatedAgent(): Promise<Agent> {
     if (this.dedicated !== null && this.ctx.agents.get(this.dedicated.id) === this.dedicated) {
@@ -52,7 +64,7 @@ export class CronFirer {
     }
     this.dedicated = null
     const id = this.getDedicatedSessionId()
-    if (id !== undefined) {
+    if (id !== undefined && !this.isArchived(id)) {
       const live = this.ctx.agents.get(SessionId(id))
       if (live !== undefined) {
         this.dedicated = live
@@ -66,6 +78,8 @@ export class CronFirer {
       } catch (error) {
         this.logger.warn(`cronjob: resume of dedicated session "${id}" failed, creating a fresh one: ${renderThrown(error)}`)
       }
+    } else if (id !== undefined) {
+      this.logger.warn(`cronjob: dedicated session "${id}" is archived (hidden from the UI); rotating to a fresh session`)
     }
     const sessionId = SessionId(`session-${randomUUID()}`)
     const handle = await this.ctx.agents.create({ sessionId, meta: { cwd: this.dedicatedSessionCwd ?? process.cwd() } })

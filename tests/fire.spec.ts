@@ -40,7 +40,10 @@ function makeCtx() {
     create: vi.fn(),
     resume: vi.fn(),
   }
-  return { agents }
+  return {
+    agents,
+    get: vi.fn(() => undefined),
+  }
 }
 
 describe('renderCronFraming', () => {
@@ -123,6 +126,24 @@ describe('CronFirer', () => {
     await firer.fire(job({}), new Date())
 
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('resume of dedicated session'))
+    expect(ctx.agents.create).toHaveBeenCalledTimes(1)
+    expect(created.agent.followup).toHaveBeenCalledTimes(1)
+  })
+
+  it('rotates to a fresh session when the dedicated session is archived', async () => {
+    const ctx = makeCtx()
+    const live = makeAgent('session-archived')
+    ctx.agents.get.mockReturnValue(live)
+    const created = makeHandle('session-fresh')
+    ctx.agents.create.mockResolvedValue(created)
+    ctx.get.mockReturnValue({ archivedSessionIds: ['session-archived'] })
+    const warn = vi.fn()
+    const firer = new CronFirer(ctx as never, () => 'session-archived', vi.fn(async () => undefined), { warn })
+
+    await firer.fire(job({}), new Date())
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('is archived'))
+    expect(live.followup).not.toHaveBeenCalled()
     expect(ctx.agents.create).toHaveBeenCalledTimes(1)
     expect(created.agent.followup).toHaveBeenCalledTimes(1)
   })
