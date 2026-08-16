@@ -5,8 +5,9 @@
  * session, HTTP routes for the Web settings UI, and model tools so the agent
  * can manage its own jobs.
  */
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
+import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import type { Context } from '@deepseek-ai/cordis'
 import type { CronJob } from './types.ts'
 import { CronJobStore } from './store.ts'
@@ -23,8 +24,17 @@ export const inject = ['settings', 'agents', 'tools']
 export interface Config {
   /** Display name for the dedicated session all jobs fire into. */
   dedicatedSessionName?: string
-  /** Absolute existing directory used as the dedicated session's cwd; defaults to the dsh process cwd. */
+  /** Absolute existing directory used as the dedicated session's cwd; defaults to `$DSH_HOME/cron-job`. */
   dedicatedSessionCwd?: string
+}
+
+/**
+ * The default dedicated-session directory: `$DSH_HOME/cron-job` (usually
+ * `~/.dsh/cron-job`). Isolated from whatever workspace the user works in,
+ * created automatically on plugin load — the plugin needs no configuration.
+ */
+export function defaultDedicatedCwd(): string {
+  return dshHomePath('cron-job')
 }
 
 /**
@@ -33,13 +43,22 @@ export interface Config {
  * @param config - Optional profile override from the loader.
  */
 export function apply(ctx: Context, config?: Config): void {
-  const dedicatedSessionCwd = config?.dedicatedSessionCwd
-  if (dedicatedSessionCwd !== undefined) {
-    if (!isAbsolute(dedicatedSessionCwd)) {
-      throw new Error(`cronjob: dedicatedSessionCwd must be an absolute path, got "${dedicatedSessionCwd}"`)
+  const configured = config?.dedicatedSessionCwd
+  const dedicatedSessionCwd = configured ?? defaultDedicatedCwd()
+  if (configured !== undefined) {
+    if (!isAbsolute(configured)) {
+      throw new Error(`cronjob: dedicatedSessionCwd must be an absolute path, got "${configured}"`)
     }
-    if (!existsSync(dedicatedSessionCwd)) {
-      throw new Error(`cronjob: dedicatedSessionCwd does not exist: "${dedicatedSessionCwd}"`)
+    if (!existsSync(configured)) {
+      throw new Error(`cronjob: dedicatedSessionCwd does not exist: "${configured}"`)
+    }
+  } else {
+    try {
+      mkdirSync(dedicatedSessionCwd, { recursive: true })
+    } catch (error) {
+      throw new Error(
+        `cronjob: could not create the default dedicated session directory "${dedicatedSessionCwd}": ${renderThrown(error)}`,
+      )
     }
   }
   const store = new CronJobStore(ctx)

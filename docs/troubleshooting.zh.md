@@ -49,16 +49,16 @@
 
 ## 专用会话落在不期望的工作区
 
-配置 `dedicatedSessionCwd` 固定专用会话的工作目录（可用一个**专属目录**把定时任务与日常会话隔离）：
+**默认无需配置**：专用会话默认在 `$DSH_HOME/cron-job`（`~/.dsh/cron-job`，自动创建），
+自动归入独立工作区，与日常会话隔离。若确实需要自定义目录：
 
 ```yaml
 # ~/.dsh/profiles/web/cordis.patch.yml
 - id: cronjob
   config:
-    dedicatedSessionCwd: 'D:\DeskTop\cron-job'
+    dedicatedSessionCwd: 'D:\DeskTop\cron-job'   # 必须是已存在的绝对路径，否则加载报错
 ```
 
-必须是**已存在的绝对路径**，否则插件加载时直接报错（fail loud）。
 **修改该配置后无需手动删除旧会话**：版本 ≥ 0.1.2 的插件会在下一次触发时检测到
 会话 cwd 与配置不一致，自动轮换到新目录的新会话（旧会话保留在原工作区，可自行删除）。
 

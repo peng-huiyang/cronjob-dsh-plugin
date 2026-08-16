@@ -32,22 +32,24 @@ allowBuilds:
 
 ## 配置
 
-插件的可选配置通过 profile patch 提供（`~/.dsh/profiles/web/cordis.patch.yml`）：
+**无需配置即可使用**：专用会话默认创建在 `$DSH_HOME/cron-job`
+（即 `~/.dsh/cron-job`，插件首次加载时自动创建），与日常工作区隔离。
+
+需要自定义时，通过 profile patch 覆盖（`~/.dsh/profiles/web/cordis.patch.yml`）：
 
 ```yaml
 - id: cronjob
   config:
-    # 专用会话的工作目录：决定它出现在哪个工作区、默认访问哪些文件。
-    # 不配置时使用 dsh web 的启动目录。必须是已存在的绝对路径。
+    # 可选：覆盖默认专用会话目录。必须是已存在的绝对路径。
     dedicatedSessionCwd: 'D:\DeskTop\harness-test'
     # 可选：新建专用会话时的初始名称（创建后可在 UI 重命名）。
     dedicatedSessionName: '定时任务'
 ```
 
-修改配置后重启 `dsh web` 生效。注意：**已存在的专用会话保持原目录**——想换位置，
-先从 UI 删除该会话，下次触发会自动在配置的目录新建。
+修改配置后重启 `dsh web` 生效。**修改 `dedicatedSessionCwd` 无需删除旧会话**：
+下一次触发时插件检测到 cwd 与配置不一致，会自动轮换到新目录的新会话（旧会话保留原处，可自行删除）。
 
-> **工作区归属**：插件会把专用会话自动记入 `dedicatedSessionCwd` 对应的工作区
+> **工作区归属**：插件会把专用会话自动记入其工作目录对应的工作区
 > （和普通会话一样出现在命名工作区下，而非「未分组」），会话行支持正常重命名。
 > 已存在的旧会话（升级前创建的）会在下一次触发时自动补齐记账。
 
