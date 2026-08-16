@@ -29,7 +29,19 @@ const DELETE_DESCRIPTION =
   'Delete one machine-level scheduled task by the exact id returned by cron_create or cron_list. ' +
   'Unknown ids return deleted false.'
 
-function jobViewOf(job: CronJob): Record<string, unknown> {
+/** One job row as returned by cron_list. */
+interface CronJobViewItem {
+  id: string
+  name: string
+  schedule: string
+  timeZone: string
+  enabled: boolean
+  nextRunAt: string | null
+  lastRunAt?: string | null
+  lastError?: string | null
+}
+
+function jobViewOf(job: CronJob): CronJobViewItem {
   return {
     id: job.id,
     name: job.name,
@@ -59,10 +71,9 @@ export function registerCronTools(ctx: Context, deps: ToolDeps): () => void {
         schema: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
+            id: { type: 'string', required: true },
             nextRunAt: { oneOf: [{ type: 'string' }, { type: 'null' }] },
           },
-          required: ['id'],
           additionalProperties: false,
         },
         render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
@@ -82,11 +93,11 @@ export function registerCronTools(ctx: Context, deps: ToolDeps): () => void {
           items: {
             type: 'object',
             properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              schedule: { type: 'string' },
-              timeZone: { type: 'string' },
-              enabled: { type: 'boolean' },
+              id: { type: 'string', required: true },
+              name: { type: 'string', required: true },
+              schedule: { type: 'string', required: true },
+              timeZone: { type: 'string', required: true },
+              enabled: { type: 'boolean', required: true },
               nextRunAt: { oneOf: [{ type: 'string' }, { type: 'null' }] },
               lastRunAt: { oneOf: [{ type: 'string' }, { type: 'null' }] },
               lastError: { oneOf: [{ type: 'string' }, { type: 'null' }] },
@@ -96,7 +107,7 @@ export function registerCronTools(ctx: Context, deps: ToolDeps): () => void {
         },
         render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
       },
-      async execute(): Promise<Record<string, unknown>[]> {
+      async execute(): Promise<CronJobViewItem[]> {
         return deps.store.list().map(jobViewOf)
       },
     })),
@@ -110,10 +121,9 @@ export function registerCronTools(ctx: Context, deps: ToolDeps): () => void {
         schema: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
-            deleted: { type: 'boolean' },
+            id: { type: 'string', required: true },
+            deleted: { type: 'boolean', required: true },
           },
-          required: ['id', 'deleted'],
           additionalProperties: false,
         },
         render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
