@@ -1,11 +1,10 @@
 # cronjob-dsh-plugin
 
+English | [中文](README.zh.md)
+
 Machine-level cron jobs for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness):
 configure scheduled tasks directly in the Web settings page; the host fires
 internally-driven agent requests into a dedicated session — hands-off.
-
-> **Status: M1–M4 implemented (skeleton, host core, HTTP routes + model tools,
-> Web UI), unit-tested. M5 (install into a live profile) in progress.**
 
 ## Features
 
@@ -37,7 +36,13 @@ Single package with two halves (same pattern as the `dshmarket` plugin):
 | `src/tools.ts` | Host | `cron_create` / `cron_list` / `cron_delete` model tools |
 | `src/client/` | Client | Settings section UI (browser bundle via tsdown) |
 
-## Install (once released)
+## Documentation
+
+- [使用指南（中文）](docs/usage.zh.md) — install, configure, first job, model tools
+- [开发指南（中文）](docs/development.zh.md) — structure, build, test, local dev, release
+- [故障排查（中文）](docs/troubleshooting.zh.md) — common issues and fixes
+
+## Install
 
 ```sh
 dsh plugin --profile web add cronjob-dsh-plugin
@@ -67,6 +72,16 @@ npm run typecheck
 npm test
 npm run build   # host tsc -> lib/, client tsdown -> client/client.js
 ```
+
+## Known limitations
+
+- The scheduler lives inside the `dsh web` process: it stops when the host is
+  down and recomputes the next run from the current time on restart (missed
+  occurrences are skipped).
+- Each fire injects one user-role message into the dedicated session and
+  consumes model tokens; the session log grows over time (use the built-in
+  `/compact` command to compress it).
+- The task text is treated as untrusted content by the firing framing.
 
 ## License
 

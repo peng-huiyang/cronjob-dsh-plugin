@@ -1,41 +1,57 @@
 # cronjob-dsh-plugin
 
-面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的机器级定时任务插件：
-直接在 Web 设置页配置定时任务，到点后由宿主内部驱动、自动触发到专用「定时任务」会话 —— 脱手执行。
+[English](README.md) | 中文
 
-> **状态：M1–M4 已完成**（骨架、宿主核心、HTTP 路由 + 模型工具、Web UI），单元测试通过；
-> M5（装入实际 profile 联调）进行中。
+面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的**机器级定时任务插件**：
+直接在 Web 设置页配置定时任务，到点后由宿主内部驱动、自动触发到专用「定时任务」会话 —— **脱手执行**。
 
 ## 功能
 
-- 真实 cron 表达式（5/6/7 段，支持 IANA 时区），基于 `croner`
-- Web 设置页 **定时任务 / Cron Jobs**：新建、编辑、启停、删除、立即触发、实时下次运行预览
-- 机器级持久任务表（`ctx.settings` 命名空间，存储于 `~/.dsh/settings.yaml`）
-- 内部驱动触发：到点后宿主以 `[CRON JOB]` 用户消息唤醒专用会话，agent 执行任务并在该会话中回复
-- 模型工具 `cron_create` / `cron_list` / `cron_delete`，agent 可自行管理任务
-- 宿主 HTTP 路由 `/cronjob/*`（list/create/update/toggle/delete/fire），变更类请求带同源校验
+- **真实 cron 表达式**（5/6/7 段，支持 IANA 时区），基于 `croner`
+- **Web 设置页「定时任务」**：新建、编辑、启停、删除、立即触发，表单实时显示下次运行预览
+- **机器级持久任务表**：`ctx.settings` 命名空间，存储于 `~/.dsh/settings.yaml`，重启不丢
+- **内部驱动触发**：到点后宿主以 `[CRON JOB]` 用户消息唤醒专用会话，agent 执行任务并在该会话中回复
+- **模型工具** `cron_create` / `cron_list` / `cron_delete`：直接对 agent 说"以后每天 9 点做 X"，它就帮你建任务
+- **宿主 HTTP 路由** `/cronjob/*`（list/create/update/toggle/delete/fire），变更类请求带同源校验
 
-## 架构
-
-单包双半（与 `dshmarket` 插件同款模式）：
-
-| 路径 | 半 | 职责 |
-|---|---|---|
-| `src/index.ts` | Host | 插件入口：store + scheduler + routes + tools 组装 |
-| `src/store.ts` | Host | `cronjob` settings 命名空间上的持久任务表 |
-| `src/schedule-util.ts` | Host | 基于 croner 的校验与下次发生时刻计算 |
-| `src/scheduler.ts` | Host | 墙钟调度器（单定时器，唤醒后重读时钟） |
-| `src/fire.ts` | Host | 触发到专用会话（`whenIdle` + `runMaintenance` + `followup`） |
-| `src/routes.ts` | Host | 面向 Web UI 的 `/cronjob/*` HTTP 路由 |
-| `src/tools.ts` | Host | `cron_create` / `cron_list` / `cron_delete` 模型工具 |
-| `src/client/` | Client | 设置页 UI（tsdown 构建浏览器包） |
-
-## 安装（发布后）
+## 快速开始
 
 ```sh
+# 1. 安装（npm 发布版）
 dsh plugin --profile web add cronjob-dsh-plugin
-# 重启 dsh web，打开 设置 -> 定时任务
+
+# 2. 重启 dsh web
+dsh web
+
+# 3. 打开 设置 -> 定时任务，新建一个任务即可
 ```
+
+> **可选配置**：把专用会话固定到你的工作区（否则默认跟随 dsh web 的启动目录），编辑
+> `~/.dsh/profiles/web/cordis.patch.yml`：
+>
+> ```yaml
+> - id: cronjob
+>   config:
+>     dedicatedSessionCwd: 'D:\你的\工作区'
+> ```
+> 已存在的专用会话保持原目录；删除它后，下一次触发会在配置的目录新建一个。
+
+## 工作原理
+
+| 模块 | 职责 |
+|---|---|
+| `store` | 任务表 CRUD（settings 命名空间，带校验与串行写） |
+| `scheduler` | 墙钟调度：算最近触发时刻 → 单定时器等待 → 唤醒后重读时钟，错过周期跳过 |
+| `fire` | 把 `[CRON JOB]` 消息入队到专用会话（`whenIdle` + `runMaintenance` + `followup`） |
+| `routes` | `/cronjob/*` HTTP 接口，供设置页调用 |
+| `tools` | `cron_create` / `cron_list` / `cron_delete` 模型工具 |
+| `client` | 设置页「定时任务」UI（tsdown 构建的浏览器包） |
+
+## 文档
+
+- [使用指南（中文）](docs/usage.zh.md) — 安装、配置、第一个任务、模型工具、卸载
+- [开发指南（中文）](docs/development.zh.md) — 仓库结构、构建、测试、本地联调、发布
+- [故障排查（中文）](docs/troubleshooting.zh.md) — 常见问题与解决方案
 
 ## 开发
 
@@ -45,6 +61,12 @@ npm run typecheck
 npm test
 npm run build   # host tsc -> lib/，client tsdown -> client/client.js
 ```
+
+## 已知限制
+
+- 调度器随 `dsh web` 进程存活：宿主关闭即停；重启后从当前时间重算下一次，**错过的周期不补跑**
+- 每次触发 = 专用会话里一条用户消息，**消耗模型 token**；会话日志会持续增长，可用内置 `/compact` 压缩
+- 触发消息中的任务文本按**不可信内容**处理（防止提示注入）
 
 ## 许可证
 
