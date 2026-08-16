@@ -1,88 +1,73 @@
 # cronjob-dsh-plugin
 
-English | [中文](README.zh.md)
+[中文](README.md) | [English](README.en.md)
 
-Machine-level cron jobs for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness):
-configure scheduled tasks directly in the Web settings page; the host fires
-internally-driven agent requests into a dedicated session — hands-off.
+面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的**机器级定时任务插件**：
+直接在 Web 设置页配置定时任务，到点后由宿主内部驱动、自动触发到专用「定时任务」会话 —— **脱手执行**。
 
-## Features
+## 功能
 
-- Real cron expressions (5/6/7-field, IANA timezone) via `croner`
-- Web settings page **Cron Jobs / 定时任务**: create, edit, enable/disable,
-  delete, fire-now, live next-run preview
-- Machine-level durable job table (`ctx.settings` namespace,
-  `~/.dsh/settings.yaml`)
-- Internally-driven firing: at the due time the host wakes the dedicated
-  session with the job's prompt (`[CRON JOB]` user message); the agent
-  executes and replies in that session's transcript
-- Model tools `cron_create` / `cron_list` / `cron_delete` so the agent can
-  manage its own jobs
-- Host HTTP routes `/cronjob/*` (list/create/update/toggle/delete/fire) with
-  same-origin protection on mutations
+- **真实 cron 表达式**（5/6/7 段，支持 IANA 时区），基于 `croner`
+- **Web 设置页「定时任务」**：新建、编辑、启停、删除、立即触发，表单实时显示下次运行预览
+- **机器级持久任务表**：`ctx.settings` 命名空间，存储于 `~/.dsh/settings.yaml`，重启不丢
+- **内部驱动触发**：到点后宿主以 `[CRON JOB]` 用户消息唤醒专用会话，agent 执行任务并在该会话中回复
+- **模型工具** `cron_create` / `cron_list` / `cron_delete`：直接对 agent 说"以后每天 9 点做 X"，它就帮你建任务
+- **宿主 HTTP 路由** `/cronjob/*`（list/create/update/toggle/delete/fire），变更类请求带同源校验
 
-## Architecture
-
-Single package with two halves (same pattern as the `dshmarket` plugin):
-
-| Path | Half | Role |
-|---|---|---|
-| `src/index.ts` | Host | Plugin entry: store + scheduler + routes + tools wiring |
-| `src/store.ts` | Host | Durable job table over the `cronjob` settings namespace |
-| `src/schedule-util.ts` | Host | croner-based validation + next-occurrence computation |
-| `src/scheduler.ts` | Host | Wall-clock scheduler (single armed timer, clock re-read on wake) |
-| `src/fire.ts` | Host | Fires jobs into the dedicated session (`whenIdle` + `runMaintenance` + `followup`) |
-| `src/routes.ts` | Host | `/cronjob/*` HTTP routes for the Web UI |
-| `src/tools.ts` | Host | `cron_create` / `cron_list` / `cron_delete` model tools |
-| `src/client/` | Client | Settings section UI (browser bundle via tsdown) |
-
-## Documentation
-
-- [使用指南（中文）](docs/usage.zh.md) — install, configure, first job, model tools
-- [开发指南（中文）](docs/development.zh.md) — structure, build, test, local dev, release
-- [故障排查（中文）](docs/troubleshooting.zh.md) — common issues and fixes
-
-## Install
+## 快速开始
 
 ```sh
+# 1. 安装（npm 发布版）
 dsh plugin --profile web add cronjob-dsh-plugin
-# restart dsh web, open Settings -> Cron Jobs
+
+# 2. 重启 dsh web
+dsh web
+
+# 3. 打开 设置 -> 定时任务，新建一个任务即可
 ```
 
-The dedicated firing session is created with the dsh process cwd as its
-working directory, which groups it under that directory's workspace in the
-UI. To pin it to a specific workspace instead, configure the plugin in your
-profile patch (`~/.dsh/profiles/web/cordis.patch.yml`):
+> **可选配置**：把专用会话固定到你的工作区（否则默认跟随 dsh web 的启动目录），编辑
+> `~/.dsh/profiles/web/cordis.patch.yml`：
+>
+> ```yaml
+> - id: cronjob
+>   config:
+>     dedicatedSessionCwd: 'D:\你的\工作区'
+> ```
+> 已存在的专用会话保持原目录；删除它后，下一次触发会在配置的目录新建一个。
 
-```yaml
-- id: cronjob
-  name: cronjob-dsh-plugin
-  config:
-    dedicatedSessionCwd: 'D:\DeskTop\harness-test'
-```
+## 工作原理
 
-An existing dedicated session keeps its original cwd; delete it from the UI
-and the next fire creates a fresh one at the configured path.
+| 模块 | 职责 |
+|---|---|
+| `store` | 任务表 CRUD（settings 命名空间，带校验与串行写） |
+| `scheduler` | 墙钟调度：算最近触发时刻 → 单定时器等待 → 唤醒后重读时钟，错过周期跳过 |
+| `fire` | 把 `[CRON JOB]` 消息入队到专用会话（`whenIdle` + `runMaintenance` + `followup`） |
+| `routes` | `/cronjob/*` HTTP 接口，供设置页调用 |
+| `tools` | `cron_create` / `cron_list` / `cron_delete` 模型工具 |
+| `client` | 设置页「定时任务」UI（tsdown 构建的浏览器包） |
 
-## Development
+## 文档
+
+- [使用指南（中文）](docs/usage.zh.md) — 安装、配置、第一个任务、模型工具、卸载
+- [开发指南（中文）](docs/development.zh.md) — 仓库结构、构建、测试、本地联调、发布
+- [故障排查（中文）](docs/troubleshooting.zh.md) — 常见问题与解决方案
+
+## 开发
 
 ```sh
 npm install
 npm run typecheck
 npm test
-npm run build   # host tsc -> lib/, client tsdown -> client/client.js
+npm run build   # host tsc -> lib/，client tsdown -> client/client.js
 ```
 
-## Known limitations
+## 已知限制
 
-- The scheduler lives inside the `dsh web` process: it stops when the host is
-  down and recomputes the next run from the current time on restart (missed
-  occurrences are skipped).
-- Each fire injects one user-role message into the dedicated session and
-  consumes model tokens; the session log grows over time (use the built-in
-  `/compact` command to compress it).
-- The task text is treated as untrusted content by the firing framing.
+- 调度器随 `dsh web` 进程存活：宿主关闭即停；重启后从当前时间重算下一次，**错过的周期不补跑**
+- 每次触发 = 专用会话里一条用户消息，**消耗模型 token**；会话日志会持续增长，可用内置 `/compact` 压缩
+- 触发消息中的任务文本按**不可信内容**处理（防止提示注入）
 
-## License
+## 许可证
 
 Apache-2.0
