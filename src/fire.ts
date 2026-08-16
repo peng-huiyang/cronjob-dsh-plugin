@@ -38,6 +38,8 @@ export class CronFirer {
     private readonly getDedicatedSessionId: () => string | undefined,
     private readonly setDedicatedSessionId: (id: string) => Promise<void>,
     private readonly logger: FirerLogger,
+    /** Working directory for a freshly created dedicated session. */
+    private readonly dedicatedSessionCwd?: string,
   ) {}
 
   /**
@@ -66,7 +68,7 @@ export class CronFirer {
       }
     }
     const sessionId = SessionId(`session-${randomUUID()}`)
-    const handle = await this.ctx.agents.create({ sessionId, meta: { cwd: process.cwd() } })
+    const handle = await this.ctx.agents.create({ sessionId, meta: { cwd: this.dedicatedSessionCwd ?? process.cwd() } })
     this.handles.push(handle)
     this.dedicated = handle.agent
     try {

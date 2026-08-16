@@ -5,6 +5,8 @@
  * session, HTTP routes for the Web settings UI, and model tools so the agent
  * can manage its own jobs.
  */
+import { existsSync } from 'node:fs'
+import { isAbsolute } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { CronJob } from './types.ts'
 import { CronJobStore } from './store.ts'
@@ -21,6 +23,8 @@ export const inject = ['settings', 'agents', 'tools']
 export interface Config {
   /** Display name for the dedicated session all jobs fire into. */
   dedicatedSessionName?: string
+  /** Absolute existing directory used as the dedicated session's cwd; defaults to the dsh process cwd. */
+  dedicatedSessionCwd?: string
 }
 
 /**
@@ -29,12 +33,22 @@ export interface Config {
  * @param config - Optional profile override from the loader.
  */
 export function apply(ctx: Context, config?: Config): void {
+  const dedicatedSessionCwd = config?.dedicatedSessionCwd
+  if (dedicatedSessionCwd !== undefined) {
+    if (!isAbsolute(dedicatedSessionCwd)) {
+      throw new Error(`cronjob: dedicatedSessionCwd must be an absolute path, got "${dedicatedSessionCwd}"`)
+    }
+    if (!existsSync(dedicatedSessionCwd)) {
+      throw new Error(`cronjob: dedicatedSessionCwd does not exist: "${dedicatedSessionCwd}"`)
+    }
+  }
   const store = new CronJobStore(ctx)
   const firer = new CronFirer(
     ctx,
     () => store.getDedicatedSessionId(),
     (id) => store.setDedicatedSessionId(id),
     ctx.logger,
+    dedicatedSessionCwd,
   )
   /** The composed fire path: queue the task, then record the outcome. */
   const fireJob = async (job: CronJob): Promise<void> => {

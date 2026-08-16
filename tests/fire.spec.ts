@@ -71,6 +71,19 @@ describe('CronFirer', () => {
     expect(message.source).toEqual({ kind: 'plugin', plugin: 'cronjob' })
   })
 
+  it('uses the configured cwd when creating the dedicated session', async () => {
+    const ctx = makeCtx()
+    const created = makeHandle('session-cron-cwd')
+    ctx.agents.create.mockResolvedValue(created)
+    const firer = new CronFirer(ctx as never, () => undefined, vi.fn(async () => undefined), { warn: vi.fn() }, 'D:\\work\\cron')
+
+    await firer.fire(job({}), new Date())
+
+    expect(ctx.agents.create).toHaveBeenCalledWith(
+      expect.objectContaining({ meta: expect.objectContaining({ cwd: 'D:\\work\\cron' }) }),
+    )
+  })
+
   it('reuses a live dedicated session', async () => {
     const ctx = makeCtx()
     const live = makeAgent('session-live')
