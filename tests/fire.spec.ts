@@ -167,4 +167,27 @@ describe('CronFirer', () => {
     expect(ctx.agents.create).toHaveBeenCalledTimes(1)
     expect(created.agent.followup).toHaveBeenCalledTimes(1)
   })
+
+  it('rotates when the cached dedicated agent becomes archived', async () => {
+    const ctx = makeCtx()
+    const live = makeAgent('session-cached')
+    ctx.agents.get.mockReturnValue(live)
+    const created = makeHandle('session-fresh-cached')
+    ctx.agents.create.mockResolvedValue(created)
+    const warn = vi.fn()
+    const firer = new CronFirer(ctx as never, () => 'session-cached', vi.fn(async () => undefined), { warn })
+
+    // First fire adopts and caches the live agent.
+    ctx.get.mockReturnValue({ archivedSessionIds: [] })
+    await firer.fire(job({}), new Date())
+    expect(live.followup).toHaveBeenCalledTimes(1)
+
+    // The user archives it; the next fire must rotate instead of reusing the cache.
+    ctx.get.mockReturnValue({ archivedSessionIds: ['session-cached'] })
+    await firer.fire(job({}), new Date())
+
+    expect(ctx.agents.create).toHaveBeenCalledTimes(1)
+    expect(created.agent.followup).toHaveBeenCalledTimes(1)
+    expect(live.followup).toHaveBeenCalledTimes(1) // unchanged — no new message into the archived session
+  })
 })

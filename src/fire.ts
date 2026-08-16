@@ -100,7 +100,11 @@ export class CronFirer {
    * abandoned in favor of a fresh one.
    */
   async ensureDedicatedAgent(): Promise<Agent> {
-    if (this.dedicated !== null && this.ctx.agents.get(this.dedicated.id) === this.dedicated) {
+    if (
+      this.dedicated !== null
+      && this.ctx.agents.get(this.dedicated.id) === this.dedicated
+      && !this.isArchived(String(this.dedicated.id))
+    ) {
       return this.dedicated
     }
     this.dedicated = null

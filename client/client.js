@@ -888,27 +888,27 @@ window.__ModuleLoader__.load({ id: "cronjob-dsh-plugin", factory: (require) => {
 			document.head.appendChild(tag);
 		}
 		var CronPage_module_css_default = {
-			"subtitle": "_5qaa_G_subtitle",
-			"cardHeader": "_5qaa_G_cardHeader",
-			"switch": "_5qaa_G_switch",
-			"formTitle": "_5qaa_G_formTitle",
-			"primary": "_5qaa_G_primary",
-			"jobName": "_5qaa_G_jobName",
-			"checkbox": "_5qaa_G_checkbox",
-			"preview": "_5qaa_G_preview",
-			"actions": "_5qaa_G_actions",
-			"notice": "_5qaa_G_notice",
-			"card": "_5qaa_G_card",
-			"empty": "_5qaa_G_empty",
-			"meta": "_5qaa_G_meta",
-			"field": "_5qaa_G_field",
 			"error": "_5qaa_G_error",
-			"page": "_5qaa_G_page",
-			"list": "_5qaa_G_list",
+			"primary": "_5qaa_G_primary",
+			"formTitle": "_5qaa_G_formTitle",
+			"notice": "_5qaa_G_notice",
+			"meta": "_5qaa_G_meta",
+			"actions": "_5qaa_G_actions",
+			"subtitle": "_5qaa_G_subtitle",
+			"card": "_5qaa_G_card",
+			"jobName": "_5qaa_G_jobName",
+			"field": "_5qaa_G_field",
+			"checkbox": "_5qaa_G_checkbox",
+			"formActions": "_5qaa_G_formActions",
 			"danger": "_5qaa_G_danger",
+			"preview": "_5qaa_G_preview",
+			"page": "_5qaa_G_page",
 			"toolbar": "_5qaa_G_toolbar",
 			"form": "_5qaa_G_form",
-			"formActions": "_5qaa_G_formActions"
+			"list": "_5qaa_G_list",
+			"empty": "_5qaa_G_empty",
+			"cardHeader": "_5qaa_G_cardHeader",
+			"switch": "_5qaa_G_switch"
 		};
 		//#endregion
 		//#region src/client/JobForm.tsx
