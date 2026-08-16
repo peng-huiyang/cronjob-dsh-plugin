@@ -1,0 +1,5 @@
+# cronjob-dsh-plugin bundle patch: inserts the cron scheduler into a
+# profile's layer stack.
+- insert:
+    - id: cronjob
+      name: 'cronjob-dsh-plugin'

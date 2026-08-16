@@ -1,0 +1,152 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+  padding: 8px 0 24px;
+}
+
+.subtitle {
+  margin: 0;
+  opacity: 0.7;
+  font-size: 13px;
+}
+
+.error {
+  color: #d64545;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.notice {
+  color: #2f9e5f;
+  font-size: 13px;
+}
+
+.empty {
+  opacity: 0.6;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  border: 1px solid var(--dsh-border, #d0d7de);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.jobName {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.meta code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.danger {
+  color: #d64545;
+}
+
+.form {
+  border: 1px solid var(--dsh-border, #d0d7de);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--dsh-surface, #f6f8fa);
+}
+
+.formTitle {
+  margin: 0;
+  font-size: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--dsh-border, #d0d7de);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--dsh-input-bg, #ffffff);
+  color: inherit;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+}
+
+.primary {
+  font-weight: 600;
+}
+
+.preview {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
